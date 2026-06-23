@@ -1,28 +1,13 @@
-# Core
 numpy>=1.24.0
 scipy>=1.10.0
-
-# Google Earth Engine
 earthengine-api>=0.1.380
-
-# Web framework
 fastapi>=0.109.0
 uvicorn>=0.25.0
-
-# Dashboard
 streamlit>=1.30.0
-
-# HTTP requests
 requests>=2.31.0
-
-# Plotting
 matplotlib>=3.8.0
-
-# Data handling
 pandas>=2.0.0
-
-# Geospatial
 rasterio>=1.3.0
-
-# Deep learning (Kaggle only — not needed locally)
-# tensorflow>=2.15.0
+geopandas>=0.14.0
+shapely>=2.0.0
+tensorflow>=2.15.0
