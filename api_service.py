@@ -4,13 +4,13 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 from pathlib import Path
 
-# ── Import our pipeline modules ───────────────────────────────────────────────
+# ── Import pipeline modules ───────────────────────────────────────────────────
 from direction import get_era5_directions
 from dealiase import resolve_ambiguity
 from cmod5n import cmod5n, retrieve_wind_speed, sigma0_db_to_linear
 from wind_vector import compute_wind_vectors
 
-# ── TensorFlow — optional, only needed when model is available ────────────────
+# ── TensorFlow — optional ─────────────────────────────────────────────────────
 try:
     import tensorflow as tf
     def wind_direction_loss(y_true, y_pred):
@@ -37,7 +37,7 @@ elif not TF_AVAILABLE:
 elif not MODEL_PATH.exists():
     print("No model file found — using ERA5 directions as fallback.")
 
-# ── Initialize GEE ───────────────────────────────────────────────────────────
+# ── Initialize GEE ────────────────────────────────────────────────────────────
 ee.Initialize(project='sar-wind-gujarat-499313')
 
 # ── FastAPI app ───────────────────────────────────────────────────────────────
@@ -45,7 +45,7 @@ app = FastAPI(
     title="Offshore Wind Resource Mapping API",
     description=(
         "Returns SAR-derived wind field vectors over the Gujarat coast. "
-        "Wind direction from ResNet M64RN4, wind speed from CMOD5.N GMF."
+        "Wind speed from CMOD5.N GMF, wind direction from ERA5 reanalysis."
     ),
     version="1.0.0",
 )
@@ -77,7 +77,7 @@ class WindResponse(BaseModel):
     wind_vectors: list[WindVector]
 
 
-# ── Helper: fetch Sentinel-1 patches from GEE ────────────────────────────────
+# ── Helper: fetch Sentinel-1 from GEE ────────────────────────────────────────
 def fetch_sar_patches(date_str, bbox, grid_spacing_km):
     region = ee.Geometry.Rectangle([
         bbox["min_lon"], bbox["min_lat"],
@@ -85,7 +85,7 @@ def fetch_sar_patches(date_str, bbox, grid_spacing_km):
     ])
 
     start = date_str
-    end   = ee.Date(date_str).advance(3, "day").format("YYYY-MM-dd").getInfo()
+    end   = ee.Date(date_str).advance(6, "day").format("YYYY-MM-dd").getInfo()
 
     s1 = (
         ee.ImageCollection("COPERNICUS/S1_GRD")
@@ -93,7 +93,6 @@ def fetch_sar_patches(date_str, bbox, grid_spacing_km):
         .filterDate(start, end)
         .filter(ee.Filter.eq("instrumentMode", "IW"))
         .filter(ee.Filter.listContains("transmitterReceiverPolarisation", "VV"))
-        .filter(ee.Filter.eq("orbitProperties_pass", "ASCENDING"))
         .select(["VV", "angle"])
         .mosaic()
         .clip(region)
@@ -107,8 +106,7 @@ def fetch_sar_patches(date_str, bbox, grid_spacing_km):
     )
 
     features = sample.getInfo()["features"]
-
-    results = []
+    results  = []
     for feat in features:
         coords = feat["geometry"]["coordinates"]
         props  = feat["properties"]
@@ -126,23 +124,13 @@ def fetch_sar_patches(date_str, bbox, grid_spacing_km):
     return results
 
 
-# ── Helper: run ResNet on patches ─────────────────────────────────────────────
-def predict_directions(sigma0_values):
-    if model is None:
-        return None
-
-    patches = []
-    for sigma0 in sigma0_values:
-        patch = np.full((49, 49), sigma0, dtype=np.float32)
-        mean  = np.mean(patch)
-        std   = np.std(patch) + 1e-6
-        patch = (patch - mean) / std
-        patches.append(patch)
-
-    patches       = np.array(patches)[..., np.newaxis]
-    predictions   = model.predict(patches, verbose=0)
-    directions_aliased = np.degrees(predictions.flatten()) % 180
-    return directions_aliased
+# ── Helper: ResNet inference (returns None — ERA5 fallback active) ─────────────
+def predict_uv(sigma0_values):
+    """
+    ResNet model is trained but requires more training data for reliable
+    inference. Currently returns None to use ERA5 + CMOD5.N pipeline.
+    """
+    return None, None
 
 
 # ── Endpoints ─────────────────────────────────────────────────────────────────
@@ -163,7 +151,7 @@ def wind_vectors(req: WindRequest):
         "max_lon": req.max_lon, "max_lat": req.max_lat,
     }
 
-    # Step 1: Fetch SAR data from GEE
+    # Step 1 — Fetch SAR data from GEE
     try:
         sar_points = fetch_sar_patches(req.date, bbox, req.grid_spacing_km)
     except Exception as e:
@@ -174,18 +162,17 @@ def wind_vectors(req: WindRequest):
         raise HTTPException(status_code=404,
                             detail=f"No SAR data for {req.date} over given region.")
 
-    # Step 2: Fetch ERA5 directions
+    # Step 2 — Fetch ERA5 directions
     try:
         era5 = get_era5_directions(req.date, bbox)
     except Exception as e:
         raise HTTPException(status_code=500,
                             detail=f"ERA5 fetch failed: {str(e)}")
 
-    # Step 3: Get ResNet wind directions
-    sigma0_values = [p["sigma0_db"] for p in sar_points]
-    aliased_dirs  = predict_directions(sigma0_values)
+    # Step 3 — Try ResNet (currently ERA5 fallback)
+    pred_u, pred_v = predict_uv([p["sigma0_db"] for p in sar_points])
 
-    # Step 4: Match ERA5 to each SAR point
+    # Step 4 — Match ERA5 direction to each SAR point
     era5_matched = []
     for point in sar_points:
         distances   = np.sqrt(
@@ -196,40 +183,44 @@ def wind_vectors(req: WindRequest):
         era5_matched.append(era5["directions_deg"][nearest_idx])
     era5_matched = np.array(era5_matched)
 
-    # Step 5: Resolve 180° ambiguity
-    if aliased_dirs is not None:
-        final_directions = resolve_ambiguity(aliased_dirs, era5_matched)
-    else:
-        final_directions = era5_matched
-
-    # Step 6: CMOD5.N wind speed
+    # Step 5 — Build wind vectors
     RADAR_LOOK = 282.0
     vectors    = []
 
     for i, point in enumerate(sar_points):
-        sigma0_lin = sigma0_db_to_linear(point["sigma0_db"])
-        theta      = point["incidence_angle"]
-        direction  = final_directions[i]
-        phi        = (direction - RADAR_LOOK) % 360
-        speed      = retrieve_wind_speed(sigma0_lin, phi, theta)
-        wv         = compute_wind_vectors(
-            np.array([speed]),
-            np.array([direction])
-        )
+        if pred_u is not None:
+            # ResNet mode — u and v predicted directly
+            u_val     = float(pred_u[i])
+            v_val     = float(pred_v[i])
+            speed     = float(np.sqrt(u_val**2 + v_val**2))
+            direction = float(np.degrees(np.arctan2(u_val, v_val)) % 360)
+        else:
+            # ERA5 + CMOD5.N mode
+            direction  = float(era5_matched[i])
+            sigma0_lin = sigma0_db_to_linear(point["sigma0_db"])
+            theta      = point["incidence_angle"]
+            phi        = (direction - RADAR_LOOK) % 360
+            speed      = retrieve_wind_speed(sigma0_lin, phi, theta)
+            wv         = compute_wind_vectors(
+                np.array([speed]),
+                np.array([direction])
+            )
+            u_val = float(wv["u"][0])
+            v_val = float(wv["v"][0])
 
         vectors.append(WindVector(
             lat=           round(point["lat"], 4),
             lon=           round(point["lon"], 4),
-            speed_ms=      round(float(speed), 2),
-            direction_deg= round(float(direction), 1),
-            u_ms=          round(float(wv["u"][0]), 3),
-            v_ms=          round(float(wv["v"][0]), 3),
+            speed_ms=      round(speed, 2),
+            direction_deg= round(direction, 1),
+            u_ms=          round(u_val, 3),
+            v_ms=          round(v_val, 3),
         ))
 
     return WindResponse(
         date=         req.date,
         num_points=   len(vectors),
-        source=       "Sentinel-1 SAR (ResNet direction + CMOD5.N speed)",
+        source=       "Sentinel-1 SAR (CMOD5.N speed + ERA5 direction)",
         wind_vectors= vectors,
     )
 
