@@ -1,10 +1,7 @@
-# 🛰️ Offshore Wind Resource Mapping Using SAR Imagery
+#  Offshore Wind Resource Mapping Using SAR Imagery
 
-**CEC Open Projects 2026 | Civil Engineering Consortium | IIT Roorkee**
 
----
-
-## 👥 Team Members
+##  Team Members
 
 | Name | Role |
 |---|---|
@@ -12,9 +9,8 @@
 | Kesar Nileshbhai Kothadiya | Sentinel-1 data acquisition, SNAP preprocessing |
 | Ishika Saral | CMOD5.N wind speed implementation |
 
----
 
-## 🎯 What This Project Does
+##  What This Project Does
 
 This project builds a complete end-to-end system for offshore wind resource mapping over the **Gujarat coast** and **Tamil Nadu coast** of India using **Sentinel-1 SAR satellite imagery**.
 
@@ -27,15 +23,15 @@ A user provides a date and a coastal region. The system:
 
 ---
 
-## 📊 Results
+##  Results
 
 ### Gujarat Coast — 15 June 2024 (Southwest Monsoon)
 
-- 150 grid points | Mean speed: 11.8 m/s | Mean direction: 52.8° (SW monsoon ✅)
+- 150 grid points | Mean speed: 11.8 m/s | Mean direction: 52.8° (SW monsoon )
 
 ### Tamil Nadu Coast — 19 August 2024 (Bay of Bengal)
 
-- 97 ocean points | Mean speed: 3.3 m/s | Mean direction: 49.2° (NE flow ✅)
+- 97 ocean points | Mean speed: 3.3 m/s | Mean direction: 49.2° (NE flow )
 
 ### Validation Summary (15 points — Gujarat + Tamil Nadu)
 
@@ -83,7 +79,7 @@ Newton-Raphson numerical inversion gives wind speed at each pixel.
 
 ---
 
-## 📁 Project Structure
+##  Project Structure
 
 ```
 sar_gujarat/
@@ -105,7 +101,7 @@ sar_gujarat/
 
 ---
 
-## 🚀 How to Run
+##  How to Run
 
 ### Prerequisites
 
@@ -159,7 +155,7 @@ Open browser at **http://localhost:8501**
 
 ---
 
-## 📅 Confirmed Working Dates
+##  Confirmed Working Dates
 
 ### Gujarat Coast (68–74°E, 20–24°N)
 ```
@@ -175,7 +171,7 @@ Open browser at **http://localhost:8501**
 
 ---
 
-## 🌐 API Reference
+##  API Reference
 
 Interactive documentation: **http://localhost:8000/docs**
 
@@ -217,7 +213,7 @@ Returns API status and model load state.
 
 ---
 
-## 🗃️ Dataset
+##  Dataset
 
 | Dataset | Source | Purpose |
 |---|---|---|
@@ -228,7 +224,7 @@ Returns API status and model load state.
 
 ---
 
-## 🧰 Tech Stack
+##  Tech Stack
 
 | Tool | Purpose |
 |---|---|
@@ -243,7 +239,7 @@ Returns API status and model load state.
 
 ---
 
-## 📖 References
+##  References
 
 1. Zanchetta, A., & Zecchetto, S. (2020). Wind direction retrieval from Sentinel-1 SAR images using ResNet. *Remote Sensing of Environment*, 249, 112040.
 
@@ -255,7 +251,7 @@ Returns API status and model load state.
 
 ---
 
-## 🌟 Novelty
+##  Novelty
 
 1. **First SAR wind retrieval study for Arabian Sea monsoon + Bay of Bengal combined** — covers two distinct Indian coastal wind regimes
 2. **Complete end-to-end pipeline** — from raw SAR imagery to interactive web dashboard
@@ -264,4 +260,3 @@ Returns API status and model load state.
 ---
 
 *Study areas: Gujarat Coast (68–74°E, 20–24°N) | Tamil Nadu Coast (79.8–81.5°E, 11.5–14.5°N)*
-*Submitted to: Civil Engineering Consortium (CEC) Open Projects 2026 | IIT Roorkee*
