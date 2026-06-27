@@ -45,7 +45,7 @@ Speed errors attributed to ERA5 spatial smoothing at 25 km vs SAR at 500 m resol
 
 ---
 
-## 🔬 Methodology
+##  Methodology
 
 ### Scientific Pipeline
 
