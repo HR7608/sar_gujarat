@@ -25,7 +25,7 @@ def get_era5_directions(date_str, bbox):
     end   = ee.Date(date_str).advance(1, "day").format("YYYY-MM-dd").getInfo()
 
     era5 = (
-        ee.ImageCollection("ECMWF/ERA5_LAND/HOURLY")
+        ee.ImageCollection("ECMWF/ERA5/HOURLY")
         .filterDate(start, end)
         .filterBounds(region)
         .select(["u_component_of_wind_10m", "v_component_of_wind_10m"])
