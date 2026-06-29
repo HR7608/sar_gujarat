@@ -27,19 +27,19 @@ A user provides a date and a coastal region. The system:
 
 ### Gujarat Coast — 15 June 2024 (Southwest Monsoon)
 
-- 150 grid points | Mean speed: 11.8 m/s | Mean direction: 52.8° (SW monsoon )
+- 693 grid points | Mean speed: 6.1 m/s | Mean direction: 49.9° (SW monsoon )
 
 ### Tamil Nadu Coast — 19 August 2024 (Bay of Bengal)
 
-- 97 ocean points | Mean speed: 3.3 m/s | Mean direction: 49.2° (NE flow )
+- 204 grid points | Mean speed: 3.3 m/s | Mean direction: 34.3° (NE flow )
 
-### Validation Summary (15 points — Gujarat + Tamil Nadu)
+### Validation Summary (12 points — Gujarat + Tamil Nadu)
 
-| Region | Mean Speed Error | RMSE Speed | Mean Dir Error |
-|---|---|---|---|
-| Gujarat | 2.80 m/s | 3.05 m/s | 2.8° |
-| Tamil Nadu | 3.96 m/s | 4.50 m/s | 6.7° |
-| **Overall** | **3.34 m/s** | **3.80 m/s** | **4.6°** |
+| Region | Mean Speed Error | Mean Dir Error |
+|---|---|---|
+| Gujarat | 2.80 m/s | 2.8° |
+| Tamil Nadu | 4.40 m/s | 0.93° |
+| **Overall** | **3.33 m/s** | **2.18°** |
 
 Speed errors attributed to ERA5 spatial smoothing at 25 km vs SAR at 500 m resolution. Direction errors well within operational standards.
 
@@ -92,7 +92,6 @@ sar_gujarat/
 ├── direction.py             # Helper: ERA5 wind direction from GEE
 ├── cmod5n.py                # Helper: CMOD5.N wind speed retrieval
 ├── dealiase.py              # Helper: 180° ambiguity resolution
-├── match_labels.py          # Helper: ERA5 labels matched to SAR patches
 ├── wind_vector.py           # Helper: u, v wind component computation
 ├── validate.py              # Validation script
 ├── validation_table.csv     # Validation results — 15 points
